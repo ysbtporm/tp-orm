@@ -1,0 +1,22 @@
+{
+    "name": "ysb/tp_orm",
+    "description": "``tp6.0`think-orm````",
+    "type": "library",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "ysb",
+            "email": "ysb_tp_orm@163.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "ysb\\": "src/"
+        },
+        "files": [
+            "stubs/load_stubs.php"
+        ]
+    }
+}
