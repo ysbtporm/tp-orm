@@ -7,6 +7,6 @@
 
 ## 安装
 ~~~
-composer require ysb/tp-orm
+composer require ysb/tp_orm
 ~~~
 
