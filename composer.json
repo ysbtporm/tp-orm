@@ -9,7 +9,7 @@
             "email": "ysb_tp_orm@163.com"
         }
     ],
-    "minimum-stability": "dev",
+    "minimum-stability": "dev-main",
     "require": {},
     "autoload": {
         "psr-4": {
