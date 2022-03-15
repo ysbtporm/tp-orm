@@ -9,6 +9,7 @@
             "email": "ysb_tp_orm@163.com"
         }
     ],
+    "version": "v0.1",
     "minimum-stability": "dev",
     "require": {},
     "autoload": {
