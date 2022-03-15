@@ -1,5 +1,5 @@
 {
-    "name": "ysb/tp_orm",
+    "name": "ysb/tp-orm",
     "description": "``tp6.0`think-orm````",
     "type": "library",
     "license": "Apache-2.0",
@@ -9,6 +9,7 @@
             "email": "ysb_tp_orm@163.com"
         }
     ],
+    "minimum-stability": "dev",
     "require": {},
     "autoload": {
         "psr-4": {
