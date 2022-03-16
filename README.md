@@ -7,6 +7,6 @@
 
 ## 安装
 ~~~
-composer require ysb/tp_orm
+composer require ysb/think-orm:dev-master
 ~~~
 
