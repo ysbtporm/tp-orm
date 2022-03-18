@@ -19,15 +19,6 @@ use think\contract\Arrayable;
 use think\contract\Jsonable;
 use think\db\BaseQuery as Query;
 
-use Sett\Dtmcli\transaction\TccTrans;
-use Sett\Dtmcli\transaction\SagaTrans;
-use Sett\Dtmcli\transaction\MsgTrans;
-use think\facade\Log;
-use app\common\lib\JsonService;
-use think\facade\Cache;
-use think\facade\Db;
-use think\db\BaseQuery;
-
 /**
  * Class Model
  * @package think
@@ -227,28 +218,6 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
     public function __construct(array $data = [])
     {
         $this->data = $data;
-//        \think\facade\Db::event('before_insert', function ( $query) {
-//            // 事件处理
-//            $params = $query->getOptions();
-//            if(isset($params["data"]['dtm_transaction_id'])){
-//                $data = $params["data"];
-//                $dmltype = "insert";
-//                $data['table'] = $params['table'];
-//                $this->dtmSql($data, "",$dmltype);
-//                return true;
-//            }
-//        });
-//        \think\facade\Db::event('before_update', function (BaseQuery $query) {
-//            // 事件处理
-//            $params = $query->getOptions();
-//            if(isset($params["data"]['dtm_transaction_id'])){
-//                $data = $params["data"];
-//                $dmltype = "update";
-//                $data['table'] = $params['table'];
-//                $this->dtmSql($data, $data["conditions"],$dmltype);
-//                return true;
-//            }
-//        });
 
         if (!empty($this->data)) {
             // 废弃字段
@@ -291,11 +260,12 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
     /**
      * 创建新的模型实例
      * @access public
-     * @param array $data  数据
-     * @param mixed $where 更新条件
+     * @param array $data       数据
+     * @param mixed $where      更新条件
+     * @param array $options    参数
      * @return Model
      */
-    public function newInstance(array $data = [], $where = null): Model
+    public function newInstance(array $data = [], $where = null, array $options = []): Model
     {
         $model = new static($data);
 
@@ -644,7 +614,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         if ($this->autoWriteTimestamp && $this->updateTime) {
             // 自动写入更新时间
             $data[$this->updateTime]       = $this->autoWriteTimestamp();
-            $this->data[$this->updateTime] = $this->getTimestampValue($data[$this->updateTime]);
+            $this->data[$this->updateTime] = $data[$this->updateTime];
         }
 
         // 检查允许字段
@@ -709,12 +679,12 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         if ($this->autoWriteTimestamp) {
             if ($this->createTime && !isset($data[$this->createTime])) {
                 $data[$this->createTime]       = $this->autoWriteTimestamp();
-                $this->data[$this->createTime] = $this->getTimestampValue($data[$this->createTime]);
+                $this->data[$this->createTime] = $data[$this->createTime];
             }
 
             if ($this->updateTime && !isset($data[$this->updateTime])) {
                 $data[$this->updateTime]       = $this->autoWriteTimestamp();
-                $this->data[$this->updateTime] = $this->getTimestampValue($data[$this->updateTime]);
+                $this->data[$this->updateTime] = $data[$this->updateTime];
             }
         }
 
@@ -867,16 +837,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
     public static function create(array $data, array $allowField = [], bool $replace = false, string $suffix = ''): Model
     {
         $model = new static();
-//        $modelName = $model->name;
-//        $arr = preg_split("/(?=[A-Z])/", $modelName);
-//        array_shift($arr);
-//        $table = strtolower(join("_",$arr));
-//        //如果监测到关键字transType和requestId,说明使用了dtm事务，然后dtm接管sql的执行。
-//        if (isset($data["transType"]) && isset($data["requestId"])) {
-//            $data["table"] = $table;
-//            self::dtmSql($data, "","insert");
-//            return $model;
-//        }
+
         if (!empty($allowField)) {
             $model->allowField($allowField);
         }
@@ -902,17 +863,6 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
     public static function update(array $data, $where = [], array $allowField = [], string $suffix = '')
     {
         $model = new static();
-//        unset($data['delete_time']);
-//        $modelName = $model->name;
-//        $arr = preg_split("/(?=[A-Z])/", $modelName);
-//        array_shift($arr);
-//        $table = strtolower(join("_",$arr));
-//        //如果监测到关键字transType和requestId,说明使用了dtm事务，然后dtm接管sql的执行。
-//        if (isset($data["transType"]) && isset($data["requestId"])) {
-//            $data["table"]= $table;
-//            self::dtmSql($data, $where,"update");
-//            return $model;
-//        }
 
         if (!empty($allowField)) {
             $model->allowField($allowField);
@@ -925,6 +875,7 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         if (!empty($suffix)) {
             $model->setSuffix($suffix);
         }
+
         $model->exists(true)->save($data);
 
         return $model;
@@ -1020,21 +971,25 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
     }
 
     // ArrayAccess
+    #[\ReturnTypeWillChange]
     public function offsetSet($name, $value)
     {
         $this->setAttr($name, $value);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetExists($name): bool
     {
         return $this->__isset($name);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetUnset($name)
     {
         $this->__unset($name);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetGet($name)
     {
         return $this->getAttr($name);
@@ -1087,10 +1042,6 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
             return call_user_func_array(static::$macro[static::class][$method]->bindTo($this, static::class), $args);
         }
 
-        if ('withattr' == strtolower($method)) {
-            return call_user_func_array([$this, 'withAttribute'], $args);
-        }
-
         return call_user_func_array([$this->db(), $method], $args);
     }
 
@@ -1114,123 +1065,5 @@ abstract class Model implements JsonSerializable, ArrayAccess, Arrayable, Jsonab
         if ($this->lazySave) {
             $this->save();
         }
-    }
-
-    /**
-     * 使用dtm事务时候，dtm接管sql执行,不用Tp的DB
-     */
-    public static function dtmSql($data, $condition,$dmltype)
-    {
-        //unset($data["modifier"]);
-       // unset($data["creator"]);
-        $baseUrl = env("APP.BASEURL");
-        $requestId = $data["dtm_transaction_id"];
-        //这里当前协商后默认使用tcc模式,后期看情况再放开saga，保留原来代码
-        $data['transType'] = "tcc";
-        if (isset($data['transType']) && $data['transType'] == "saga") {
-            env('IS_LOG') && Log::debug("opts-2: " . json_encode($data));
-            //存储gid,开发阶段先用文件缓存，稳定迁移到redis上面。
-            try {
-                $trans = new SagaTrans(env("APP.DTMHOST"));
-                $gid = $trans->createNewGid();
-                Log::debug("transaction_id: " . $gid);
-                Log::debug("opts: " . json_encode($data));
-            } catch (Exception $exception) {
-                throw new \Exception($exception->getMessage(), 30021);
-            }
-            if (!Cache::get($requestId)) {
-                Cache::set($requestId, $gid, 30);
-                Log::debug("requestId-gid: " . Cache::get($requestId));
-            } else {
-                $gid = Cache::get($requestId);
-            }
-            Log::debug("requestId-gid: " . Cache::get($requestId));
-            if (empty($gid)) {
-                return rpcResponse(['result' => "fail"]);
-            } else {
-                unset($data["delete_time"]);
-                unset($data["requestId"]);
-                unset($data["transType"]);
-                unset($data["conditions"]);
-                unset($data["update_time"]);
-                $opts['data']['gid'] = $gid;
-                $opts['data']['table'] = $data["table"];
-                unset($data["table"]);
-                unset($data["dtm_transaction_id"]);
-                $opts['data']['column'] = $data;
-                if($dmltype=="update"){
-                    $opts['data']['where'] = $condition;
-                }
-                $opts['data']['dmlType'] = $dmltype;
-
-                $data = [
-                    "type" => 2,
-                    "op" => json_encode(['actionUrl' => $baseUrl . "/trans/sagaaction", "revertUrl" => $baseUrl . "/trans/sagarevert"]),
-                    "gid" => $gid,
-                    "param" => json_encode($opts)
-                ];
-                env('IS_LOG') && Log::debug("trans_op_data: " . json_encode($data));
-                $existSql = "select gid from trans_op where gid="."'".$data['gid']."'";
-                $existRes = DB::query($existSql);
-                if(!$existRes){
-                    $sql = "insert into trans_op (`type`,`op`,`gid`,`param`,`create_time`) values(2," . "'" . $data['op'] . "'," . "'" . $data['gid'] . "'," . "'" . $data['param'] . "'," . "'" . date("Y-m-d H:i:s") . "'" . ")";
-                    Db::query($sql);
-                }
-                return rpcResponse(['result' => "success"]);
-            }
-        }
-        if (isset($data['transType']) && $data['transType'] == "tcc") {
-            try {
-                $trans = new SagaTrans(env("APP.DTMHOST"));
-                $gid = $trans->createNewGid();
-                Log::debug("transaction_id: " . $gid);
-                Log::debug("opts: " . json_encode($data));
-            } catch (Exception $exception) {
-                throw new \Exception($exception->getMessage(), 30021);
-            }
-
-            if (!Cache::get($requestId)) {
-                Cache::set($requestId, $gid, 30);
-                Log::debug("requestId-gid: " . Cache::get($requestId));
-            } else {
-                $gid = Cache::get($requestId);
-            }
-            Log::debug("requestId-gid: " . Cache::get($requestId));
-            if (empty($gid)) {
-                return rpcResponse(['result' => "fail"]);
-            } else {
-                if($dmltype=="insert"){
-                    unset($data["modifier"]);
-                    unset($data["creator"]);
-                }
-                unset($data["requestId"]);
-                unset($data["transType"]);
-                unset($data["conditions"]);
-                unset($data["update_time"]);
-                $opts['data']['gid'] = $gid;
-                $opts['data']['table'] = $data["table"];
-                unset($data["table"]);
-                unset($data["dtm_transaction_id"]);
-                $opts['data']['column'] = $data;
-                if($dmltype=="update"){
-                    $opts['data']['where'] = $condition;
-                }
-                $opts['data']['dmlType'] = $dmltype;
-                $data = [
-                    "type" => 1,
-                    "op" => json_encode(['tryUrl' => $baseUrl . "/trans/tcctry", "confirmUrl" => $baseUrl . "/trans/tccconfirm", "cancelUrl" => $baseUrl . "/trans/tcccancel"]),
-                    "gid" => $gid,
-                    "param" => json_encode($opts)
-                ];
-                $existSql = "select  gid from trans_op where gid= '$gid'";
-                $existRes = Db::query($existSql);
-                if(!$existRes){
-                    $sql = "insert into trans_op (`type`,`op`,`gid`,`param`,`create_time`) values(1," . "'" . $data['op'] . "'," . "'" . $data['gid'] . "'," . "'" . $data['param'] . "'," . "'" . date("Y-m-d H:i:s") . "'" . ")";
-                    Db::query($sql);
-                }
-                return rpcResponse(['result' => "success"]);
-            }
-        }
-
     }
 }
