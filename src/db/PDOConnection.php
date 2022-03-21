@@ -934,7 +934,7 @@ abstract class PDOConnection extends Connection
         // 分析查询表达式
         $options = $query->parseOptions();
 
-        $flag = $this->db->trigger('before_insert', $query);
+        $flag = $this->db->trigger('before_insert', $query,true);
         if($flag === true) return 0;
 
         // 生成SQL语句
@@ -1049,7 +1049,7 @@ abstract class PDOConnection extends Connection
     {
         $query->parseOptions();
 
-        $flag = $this->db->trigger('before_update', $query);
+        $flag = $this->db->trigger('before_update', $query,true);
         if($flag === true ) return 0;
 
         // 生成UPDATE SQL语句
